@@ -54,7 +54,7 @@ router.post('/upload/start', (req, res) => {
 
     try {
         // Initiating child process
-        tasks[userId] = fork('./src/jobs/upload.js', [fileId, arg], {stdio : [process.stdin, process.stdout, "ignore", 'pipe', 'ipc']});
+        tasks[userId] = fork('./jobs/upload.js', [fileId, arg], {stdio : [process.stdin, process.stdout, "ignore", 'pipe', 'ipc']});
 
         // Listening to child message event
         tasks[userId].on('message', (message) => {
@@ -172,15 +172,17 @@ router.get('/upload/terminate', (req, res) => {
     const userId = req.headers['user-id'];
     const fileId = req.headers['x-file-id'];
 
+    // Checking if process is previously paused
+    if(paused[userId]) {
+        fs.unlink("./tmp/" + fileId, (err) => {
+            if (err) console.log("Error", err);
+        });
+        return res.status(200).send({"Success" : "Uploading process terminated!"});
+    }
+
     // Checking for ongoing process
     if(!tasks[userId] || !tasks[userId].pid) {
         return res.status(400).send({"Error" : "No ongoing process found"});
-    }
-
-    // Checking if process is previously paused
-    if(paused[userId]) {
-        fs.unlink("./tmp/" + fileId);
-        return res.status(200).send({"Success" : "Uploading process terminated!"});
     }
 
     // Sending message to child to exit process

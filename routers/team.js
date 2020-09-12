@@ -3,44 +3,41 @@ const { fork } = require('child_process');
 
 const router = new express.Router();
 
-var tasks = {};                     // to store information about tasks
+var tasks = {};                 // to store information about tasks
 
 // 
-// route to start or resume extraction
+// route to start or resume team creation
+// ** 'user-id' is required header
 // 
 
-router.get('/extract/start', (req, res) => {
-    console.log('/extract/start');
+router.get('/team/start', (req, res) => {
+    console.log('/team/start');
 
     const userId = req.headers['user-id'];
-    const start = req.headers['x-start'];
-    const end = req.headers['x-end'];
 
     // Checking for required header
-    if(!userId || !start || !end) {
+    if(!userId) {
         return res.status(400).send({"Error" : "Required headers not present"});
     }
 
     // Checking if task is previously paused
     // Setting arg value accordingly to pass it to child process
-
+    var arg;
     if(tasks[userId] && tasks[userId]["status"] === "paused") {
-        if(start != tasks[userId].state) {
-            return res.status(400).send("Wrong start for paused process.");
-        }
+        arg = tasks[userId]["state"];
+    }
+    else {
+        arg = 0;
     }
 
     if(!tasks[userId]) {
         tasks[userId] = {};
     }
 
-    // to facilitate resume request without needing to call status route
-    tasks[userId].req = {start, end};
-
     // Initiating child process
-    tasks[userId]["task"] = fork('./src/jobs/extract.js', [start, end], {stdio : [process.stdin, process.stdout, process.stderr, 'pipe', 'ipc']});
+    tasks[userId]["task"] = fork('./jobs/team.js', [arg], {stdio : [process.stdin, process.stdout, process.stderr, 'pipe', 'ipc']});
 
-    // Listening to child message event
+    // Listening to child message events
     tasks[userId]["task"].on('message', (message) => {
 
         if(message["status"] === 'Success') 
@@ -50,8 +47,8 @@ router.get('/extract/start', (req, res) => {
             const data = tasks[userId]["data"];
             delete tasks[userId];
 
-            console.log("/extract/start response sent with required data");
-            return res.status(200).send({"Data" : data});
+            console.log("/team/start response sent with required data");
+            return res.status(200).send({"Team Leaders" : data});
         } 
         else if(message["status"] === 'Ongoing') 
         {
@@ -70,7 +67,6 @@ router.get('/extract/start', (req, res) => {
         }
     });
 
-    // Terminating request in case user hit pause or terminate route and killed child process
     tasks[userId].task.on('exit', (code, signal) => {
         if(signal != null) {
             return res.status(500).send("Process either paused or terminated");
@@ -83,11 +79,11 @@ router.get('/extract/start', (req, res) => {
 
 
 // 
-// Route to get status(ongoing/paused/no_task) of extraction task
+// Route to get status(ongoing/paused/no_task) of team creation task
 // 
 
-router.get('/extract/status', (req,res) => {
-    console.log("/extract/status");
+router.get('/team/status', (req,res) => {
+    console.log("/team/status");
 
     const userId = req.headers['user-id'];
 
@@ -98,10 +94,10 @@ router.get('/extract/status', (req,res) => {
     }
 
     if(!tasks[userId]) {
-        return res.status(200).send({"status" : "No ongoing extraction process!"});
+        return res.status(200).send({"status" : "No ongoing team creation process!"});
     } 
     else {
-        return res.status(200).send({"status" : tasks[userId]["status"], "start" : tasks[userId]["state"]});
+        return res.status(200).send({"status" : tasks[userId]["status"], "state" : tasks[userId]["state"]});
     }
 });
 
@@ -110,8 +106,8 @@ router.get('/extract/status', (req,res) => {
 // Route to pause
 // 
 
-router.get('/extract/pause', (req, res) => {
-    console.log("/extract/pause");
+router.get('/team/pause', (req, res) => {
+    console.log("/team/pause");
 
     const userId = req.headers['user-id'];
 
@@ -119,19 +115,23 @@ router.get('/extract/pause', (req, res) => {
         return res.status(400).send({"Error" : "No ongoing process found"});
     }
 
+    // killing child process
     process.kill(tasks[userId]["task"].pid, 'SIGTERM');
     delete tasks[userId]["task"];
 
+    // updating task status
     tasks[userId]["status"] = "Paused";
-    res.status(200).send({"Success" : "Extraction process paused !"});
+
+    res.status(200).send({"Success" : "Team creation process paused !"});
 })
 
+
 // 
-// Route to resume
+// Route to resume upload
 // 
 
-router.get('/extract/resume', (req, res) => {
-    console.log("/extract/resume");
+router.get('/team/resume', (req, res) => {
+    console.log("/team/resume");
 
     const userId = req.headers['user-id'];
 
@@ -139,11 +139,7 @@ router.get('/extract/resume', (req, res) => {
         return res.status(400).send({"Error" : "No paused process found"});
     }
 
-    const start = tasks[userId].req.start;
-    const end = tasks[userId].req.end;
-    
-    // Initiating child process
-    tasks[userId]["task"] = fork('./src/jobs/extract.js', [start, end], {stdio : [process.stdin, process.stdout, process.stderr, 'pipe', 'ipc']});
+    tasks[userId]["task"] = fork('./jobs/team.js', [tasks[userId].state], {stdio : [process.stdin, process.stdout, process.stderr, 'pipe', 'ipc']});
 
     // Listening to child message event
     tasks[userId]["task"].on('message', (message) => {
@@ -155,8 +151,7 @@ router.get('/extract/resume', (req, res) => {
             const data = tasks[userId]["data"];
             delete tasks[userId];
 
-            console.log("/extract/start response sent with required data");
-            return res.status(200).send({"Data" : data});
+            return res.status(200).send({"Team Leaders" : data});
         } 
         else if(message["status"] === 'Ongoing') 
         {
@@ -185,11 +180,13 @@ router.get('/extract/resume', (req, res) => {
     tasks[userId]["task"].send('START');
 })
 
+
 // 
-// Router to terminate upload
+// Route to terminate upload
 // 
-router.get('/extract/terminate', (req, res) => {
-    console.log("/extract/terminate");
+
+router.get('/team/terminate', (req, res) => {
+    console.log("/team/terminate");
 
     const userId = req.headers['user-id'];
 
@@ -199,13 +196,14 @@ router.get('/extract/terminate', (req, res) => {
 
     if(tasks[userId].status === 'Paused') {
         delete tasks[userId];
-        return res.status(200).send({"Success" : "Extraction process terminated!"})
+        return res.status(200).send({"Success" : "Team creation process terminated!"})
     }
-    
+
+    // killing child process
     process.kill(tasks[userId]["task"].pid, 'SIGTERM');
     delete tasks[userId];
 
-    return res.status(200).send({"Success" : "Extraction process terminated!"});
+    return res.status(200).send({"Success" : "Team creation process terminated!"});
 })
 
 

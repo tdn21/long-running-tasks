@@ -1,8 +1,8 @@
 const express = require('express');
 
-const uploadRouter = require('./src/routers/upload');
-const teamRouter = require('./src/routers/team');
-const extractRouter = require('./src/routers/extract');
+const uploadRouter = require('./routers/upload');
+const teamRouter = require('./routers/team');
+const extractRouter = require('./routers/extract');
 
 const app = express();
 const port = 8080;
