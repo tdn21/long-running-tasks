@@ -169,8 +169,8 @@ router.get('/upload/pause', (req, res) => {
 router.get('/upload/terminate', (req, res) => {
     console.log("/upload/terminate");
 
-    var userId = req.headers['user-id'];
-    var fileId = req.headers['x-file-id'];
+    const userId = req.headers['user-id'];
+    const fileId = req.headers['x-file-id'];
 
     // Checking for ongoing process
     if(!tasks[userId] || !tasks[userId].pid) {
