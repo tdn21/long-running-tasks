@@ -54,7 +54,7 @@ router.post('/upload/start', (req, res) => {
 
     try {
         // Initiating child process
-        tasks[userId] = fork('.src/jobs/upload.js', [fileId, arg], {stdio : [process.stdin, process.stdout, "ignore", 'pipe', 'ipc']});
+        tasks[userId] = fork('./src/jobs/upload.js', [fileId, arg], {stdio : [process.stdin, process.stdout, "ignore", 'pipe', 'ipc']});
 
         // Listening to child message event
         tasks[userId].on('message', (message) => {
