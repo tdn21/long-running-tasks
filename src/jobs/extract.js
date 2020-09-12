@@ -43,7 +43,6 @@ const extractData = (start, end) => {
 // To initiate extraction process on 'START'
 process.on('message', (message) => {
     if(message == 'START') {
-        console.log('Extract Child process received: START message');
         extractData(process.argv[2], process.argv[3]);
     }
 });
