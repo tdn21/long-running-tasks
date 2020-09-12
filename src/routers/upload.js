@@ -38,7 +38,7 @@ router.post('/upload/start', (req, res) => {
     // from client side without hitting "upload/pause" route explicitly
     var stats = null;
     try {
-        stats = fs.statSync('../file/' + fileId);
+        stats = fs.statSync('./tmp/' + fileId);
     } catch (err) {}
 
     // Setting arg value accordingly to pass it to child process
@@ -126,7 +126,7 @@ router.get('/upload/status', (req,res) => {
     // Checking if file is partially uploaded
     var stats = null;
     try {
-        stats = fs.statSync('./file/' + fileId);
+        stats = fs.statSync('./tmp/' + fileId);
     } catch (err) {}
 
     if(stats && stats.isFile()) 
@@ -187,7 +187,7 @@ router.get('/upload/terminate', (req, res) => {
     tasks[userId].send('DESTROY');
 
     // Removing already uploaded file
-    fs.unlink("./file/" + fileId, (err) => {
+    fs.unlink("./tmp/" + fileId, (err) => {
         if (err) console.log("Error", err);
     });
 
