@@ -27,7 +27,7 @@ In each service (Upload/Extract/Team), on getting start request with required he
 <br />
 <br />
 
-In case of upload service, op pause, we are representing current state by how much data is uploaded i.e. start position for resumed process in case process gets paused.
+In case of upload service, on pause, we are representing current state by how much data is uploaded i.e. start position for resumed process in case process gets paused.
 
 ### Assumptions
 * Services are used by authenticated users and hence every user have some sort of unique user id.
